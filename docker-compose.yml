@@ -1,0 +1,25 @@
+# version: '3.8'
+services:
+  worker1:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker1
+    container_name: worker1
+    environment:
+      WORKER_PORT: 12345
+    networks:
+      - app-network
+
+  controller:
+    build:
+      context: .
+      dockerfile: Dockerfile.controller
+    container_name: controller
+    depends_on:
+      - worker1
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

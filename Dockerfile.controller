@@ -1,0 +1,14 @@
+# Eine offizielle Python-Laufzeitumgebung als übergeordnetes Image verwenden
+FROM python:3.9-slim
+
+# Einstellen des Arbeitsverzeichnisses im Container
+WORKDIR /app
+
+# Den Inhalt des aktuellen Verzeichnisses in den Container unter / app kopieren
+COPY . /app
+
+# Port 12345 für die Welt außerhalb dieses Containers verfügbar machen
+EXPOSE 12345
+
+# app.py beim Starten des Containers ausführen
+CMD ["python", "controller.py"]
