@@ -10,6 +10,26 @@ services:
     networks:
       - app-network
 
+  worker2:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker2
+    container_name: worker2
+    environment:
+      WORKER_PORT: 12345
+    networks:
+      - app-network
+
+  worker3:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker3
+    container_name: worker3
+    environment:
+      WORKER_PORT: 12345
+    networks:
+      - app-network
+
   controller:
     build:
       context: .

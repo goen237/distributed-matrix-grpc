@@ -12,3 +12,6 @@ EXPOSE 12345
 
 # app.py beim Starten des Containers ausführen
 CMD ["python", "controller.py"]
+
+# Installiere die Abhängigkeit ping
+RUN apt-get update && apt-get install -y iputils-ping

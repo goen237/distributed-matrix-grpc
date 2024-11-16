@@ -1,11 +1,12 @@
 import socket
 import time
+import os
 # from typing import List, Tuple
 
 def udp_controller(worker_addresses):
     # Ein Socket wird erstellt und an einen beliebigen Port gebunden
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.settimeout(5)  # Timeout für die Antwort
+    sock.settimeout(10)  # Timeout für die Antwort
 
     # Jeder Worker in der Liste wird einzeln abgefragt
     for worker in worker_addresses:
@@ -25,11 +26,17 @@ def udp_controller(worker_addresses):
             end_time = time.time()
 
             if data.decode() == 'OK':
-                print(f"Antwort von Worker {address}:{port} erhalten: OK")
+                print(f"Antwort von Worker {address} : {port} erhalten: OK")
                 sock.sendto(b'stop', (address, port))
             
             # Round-Trip-Time berechnen und ausgeben
             print(f"Round-Trip-Time: {(end_time - start_time) * 1000:.2f} ms\n")
+
+            start_ptime = time.time()
+            os.system("ping -c 1 " + address) # Ping an Worker senden
+            end_ptime = time.time()
+            print(f"Ping-Zeit: {(end_ptime - start_ptime) * 1000:.2f} ms\n")
+            
 
         except socket.timeout:
             print(f"Keine Antwort vom Worker {address}:{port} erhalten.\n")
@@ -39,5 +46,5 @@ def udp_controller(worker_addresses):
 
 if __name__ == '__main__':
     # Worker-Adressen und Ports
-    worker_addresses = [('localhost', 12345)]
+    worker_addresses = [('worker1', 12345), ('worker2', 12345), ('worker3', 12345)]
     udp_controller(worker_addresses)
