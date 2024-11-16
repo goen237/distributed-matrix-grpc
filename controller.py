@@ -32,10 +32,11 @@ def udp_controller(worker_addresses):
             # Round-Trip-Time berechnen und ausgeben
             print(f"Round-Trip-Time: {(end_time - start_time) * 1000:.2f} ms\n")
 
-            start_ptime = time.time()
-            os.system("ping -c 1 " + address) # Ping an Worker senden
-            end_ptime = time.time()
-            print(f"Ping-Zeit: {(end_ptime - start_ptime) * 1000:.2f} ms\n")
+            # start_ptime = time.time()
+            # os.system("ping -c 1 " + address) # Ping an Worker senden
+            # end_ptime = time.time()
+            # print(f"Ping-Zeit: {(end_ptime - start_ptime) * 1000:.2f} ms\n")
+            
             
 
         except socket.timeout:
