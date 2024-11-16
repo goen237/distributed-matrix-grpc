@@ -1,0 +1,17 @@
+# Dockerfile.worker für den Worker-Container
+
+# Basis_image: python:3.9-slim
+FROM python:3.9-slim
+
+# Verzeichnis /app im Container erstellen und als Arbeitsverzeichnis setzen
+WORKDIR /app
+
+# Kopiere die Datei worker.py in das Verzeichnis /app im Container
+COPY worker3.py .
+
+# ENV für die Portnummer, die beim Start des Containers gesetzt werden kann
+ENV WORKER_PORT 12345
+
+# legt fest, welches Kommando ausgeführt werden soll, wenn der Container gestartet wird
+CMD ["python3", "worker3.py"]
+
