@@ -1,7 +1,7 @@
 # Dockerfile.worker für den Worker-Container
 
 # Basis_image: python:3.9-slim
-FROM python:3.9-slim
+FROM python:3-slim
 
 # Verzeichnis /app im Container erstellen und als Arbeitsverzeichnis setzen
 WORKDIR /app

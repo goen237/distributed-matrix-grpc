@@ -4,18 +4,18 @@ import threading
 import os
 # from typing import List, Tuple
 
-def send_healthcheck(worker_addresses):
+def send_healthcheck(worker_address: tuple):
     # Ein Socket wird erstellt und an einen beliebigen Port gebunden
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.settimeout(10)  # Timeout für die Antwort
+    sock.settimeout(5)  # Timeout für die Antwort
 
 
     # Worker-Adresse und Port werden aus der Liste gelesen
-    address, port = worker_addresses # Tuple unpacking
+    address, port = worker_address # Tuple unpacking
 
     # Startzeit für die Round-Trip-Time
     start_time = time.time()
-    print(f"Sende Healthcheck an Worker bei {address}:{port} ...")
+    print(f"Sende Healthcheck an {address} : {port} ...")
 
     sock.sendto(b'healthcheck', (address, port))  # Healthcheck senden
 
@@ -26,11 +26,11 @@ def send_healthcheck(worker_addresses):
         end_time = time.time()
 
         if data.decode() == 'OK':
-            print(f"Antwort von Worker {address} : {port} erhalten: OK")
+            print(f"Antwort von Worker {address} -> {port} erhalten: OK")
             sock.sendto(b'stop', (address, port))
         
         # Round-Trip-Time berechnen und ausgeben
-        print(f"Round-Trip-Time {address}: {(end_time - start_time) * 1000:.2f} ms\n")
+        print(f"\nRound-Trip-Time {address}: {(end_time - start_time) * 1000:.2f} ms\n")
         os.system("ping -c 1 " + address) # Ping an Worker senden
 
     except socket.timeout:
@@ -44,9 +44,13 @@ def send_healthcheck(worker_addresses):
 threads = []
 # Worker-Adressen und Ports
 worker_addresses = [('worker1', 12345), ('worker2', 12346), ('worker3', 12347)]
+
+
 for worker in worker_addresses:
     thread = threading.Thread(target= send_healthcheck, args=(worker,))
     threads.append(thread)
+
+for thread in threads:
     thread.start()
 
 for thread in threads:

@@ -1,5 +1,5 @@
 # Eine offizielle Python-Laufzeitumgebung als übergeordnetes Image verwenden
-FROM python:3.9-slim
+FROM python:3-slim
 
 # Einstellen des Arbeitsverzeichnisses im Container
 WORKDIR /app
