@@ -16,7 +16,7 @@ services:
       dockerfile: Dockerfile.worker2
     container_name: worker2
     environment:
-      WORKER_PORT: 12345
+      WORKER_PORT: 12346
     networks:
       - app-network
 
@@ -26,7 +26,7 @@ services:
       dockerfile: Dockerfile.worker3
     container_name: worker3
     environment:
-      WORKER_PORT: 12345
+      WORKER_PORT: 12347
     networks:
       - app-network
 
@@ -37,6 +37,8 @@ services:
     container_name: controller
     depends_on:
       - worker1
+      - worker2
+      - worker3
     networks:
       - app-network
 

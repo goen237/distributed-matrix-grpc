@@ -1,51 +1,53 @@
 import socket
 import time
+import threading
 import os
 # from typing import List, Tuple
 
-def udp_controller(worker_addresses):
+def send_healthcheck(worker_addresses):
     # Ein Socket wird erstellt und an einen beliebigen Port gebunden
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.settimeout(10)  # Timeout für die Antwort
 
-    # Jeder Worker in der Liste wird einzeln abgefragt
-    for worker in worker_addresses:
-        # Worker-Adresse und Port werden aus der Liste gelesen
-        address, port = worker # Tuple unpacking
 
-        # Startzeit für die Round-Trip-Time
-        start_time = time.time()
-        print(f"Sende Healthcheck an Worker bei {address}:{port} ...")
+    # Worker-Adresse und Port werden aus der Liste gelesen
+    address, port = worker_addresses # Tuple unpacking
 
-        sock.sendto(b'healthcheck', (address, port))  # Healthcheck senden
+    # Startzeit für die Round-Trip-Time
+    start_time = time.time()
+    print(f"Sende Healthcheck an Worker bei {address}:{port} ...")
 
-        try:
-            data, _ = sock.recvfrom(1024)  # Antwort vom Worker empfangen
+    sock.sendto(b'healthcheck', (address, port))  # Healthcheck senden
 
-            # Endzeit für die Round-Trip-Time
-            end_time = time.time()
+    try:
+        data, _ = sock.recvfrom(1024)  # Antwort vom Worker empfangen
 
-            if data.decode() == 'OK':
-                print(f"Antwort von Worker {address} : {port} erhalten: OK")
-                sock.sendto(b'stop', (address, port))
-            
-            # Round-Trip-Time berechnen und ausgeben
-            print(f"Round-Trip-Time: {(end_time - start_time) * 1000:.2f} ms\n")
+        # Endzeit für die Round-Trip-Time
+        end_time = time.time()
 
-            # start_ptime = time.time()
-            # os.system("ping -c 1 " + address) # Ping an Worker senden
-            # end_ptime = time.time()
-            # print(f"Ping-Zeit: {(end_ptime - start_ptime) * 1000:.2f} ms\n")
-            
-            
+        if data.decode() == 'OK':
+            print(f"Antwort von Worker {address} : {port} erhalten: OK")
+            sock.sendto(b'stop', (address, port))
+        
+        # Round-Trip-Time berechnen und ausgeben
+        print(f"Round-Trip-Time {address}: {(end_time - start_time) * 1000:.2f} ms\n")
+        os.system("ping -c 1 " + address) # Ping an Worker senden
 
-        except socket.timeout:
-            print(f"Keine Antwort vom Worker {address}:{port} erhalten.\n")
+    except socket.timeout:
+        print(f"Keine Antwort vom Worker {address} : {port} erhalten.\n")
 
+    finally:
     # Socket schließen
-    sock.close()
+        sock.close()
 
-if __name__ == '__main__':
-    # Worker-Adressen und Ports
-    worker_addresses = [('worker1', 12345), ('worker2', 12345), ('worker3', 12345)]
-    udp_controller(worker_addresses)
+
+threads = []
+# Worker-Adressen und Ports
+worker_addresses = [('worker1', 12345), ('worker2', 12346), ('worker3', 12347)]
+for worker in worker_addresses:
+    thread = threading.Thread(target= send_healthcheck, args=(worker,))
+    threads.append(thread)
+    thread.start()
+
+for thread in threads:
+    thread.join()

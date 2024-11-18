@@ -3,7 +3,7 @@ import os
 
 def udp_worker():
     # Der Port wird aus der Umgebungsvariable WORKER_PORT gelesen
-    port = int(os.getenv("WORKER_PORT", 12345))
+    port = int(os.getenv("WORKER_PORT", 12347))
 
     # Ein Socket wird erstellt und an den angegebenen Port gebunden
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

@@ -10,7 +10,7 @@ WORKDIR /app
 COPY worker3.py .
 
 # ENV für die Portnummer, die beim Start des Containers gesetzt werden kann
-ENV WORKER_PORT 12345
+ENV WORKER_PORT 12347
 
 # legt fest, welches Kommando ausgeführt werden soll, wenn der Container gestartet wird
 CMD ["python3", "worker3.py"]
