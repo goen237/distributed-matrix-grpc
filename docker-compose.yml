@@ -1,34 +1,16 @@
 # version: '3.8'
 services:
-  worker1:
+  worker:
     build:
       context: .
-      dockerfile: Dockerfile.worker1
-    container_name: worker1
+      dockerfile: Dockerfile.worker
+
     environment:
       WORKER_PORT: 12345
     networks:
       - app-network
-
-  worker2:
-    build:
-      context: .
-      dockerfile: Dockerfile.worker2
-    container_name: worker2
-    environment:
-      WORKER_PORT: 12346
-    networks:
-      - app-network
-
-  worker3:
-    build:
-      context: .
-      dockerfile: Dockerfile.worker3
-    container_name: worker3
-    environment:
-      WORKER_PORT: 12347
-    networks:
-      - app-network
+    deploy:
+      replicas: ${WORKER_COUNT}
 
   controller:
     build:
@@ -36,11 +18,12 @@ services:
       dockerfile: Dockerfile.controller
     container_name: controller
     depends_on:
-      - worker1
-      - worker2
-      - worker3
+      - worker
     networks:
       - app-network
+    environment:
+      - WORKER_COUNT=${WORKER_COUNT}
+    entrypoint:  ["python", "controller.py"]
 
 networks:
   app-network:
