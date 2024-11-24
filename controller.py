@@ -77,12 +77,12 @@ class HealthCheckManager:
 if __name__ == "__main__":
     num_workers = int(os.getenv("WORKER_COUNT", "1"))
     base_port = int(os.getenv("WORKER_PORT", "12345"))
-    base_name = "worker"  # Name des Workers
+    base_name = "group_d_2-worker"  # Name des Workers
     worker_addresses = []
 
     # Erstellen der Worker-Adressen
     for i in range(1, num_workers + 1):
-        host = f"{base_name}"  # Alle Worker nutzen denselben Basisnamen im Netzwerk
+        host = f"{base_name}-{i}"  # Alle Worker nutzen denselben Basisnamen im Netzwerk
         port = base_port  # Jeder Worker hat eine eindeutige Portnummer
         worker_addresses.append((host, port))
 
