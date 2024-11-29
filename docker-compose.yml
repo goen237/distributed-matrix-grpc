@@ -4,7 +4,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.worker
-
     environment:
       WORKER_PORT: 12345
     networks:
@@ -24,6 +23,19 @@ services:
     environment:
       - WORKER_COUNT=${WORKER_COUNT}
     entrypoint:  ["python", "controller.py"]
+
+  http_server:
+    build:
+      context: .
+      dockerfile: Dockerfile.http_server
+    container_name: http_server
+    networks:
+      - app-network
+    ports:
+      - "8080:80"
+    environment:
+      - WORKER_COUNT=${WORKER_COUNT}
+    entrypoint:  ["python", "http_server.py"]
 
 networks:
   app-network:

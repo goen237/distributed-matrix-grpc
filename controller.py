@@ -5,7 +5,7 @@ import os
 import json
 
 class Controller:
-    def __init__(self, worker_address: tuple, interval: int = 3):
+    def __init__(self, worker_address: tuple, interval: int = 5):
         self.worker_address = worker_address
         self.interval = interval
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -26,9 +26,15 @@ class Controller:
 
                 if data.decode() == 'OK':
                     rtt = (end_time - start_time) * 1000  # RTT in Millisekunden
+                    rtt = round(rtt, 2)
                     self.rtts.append(rtt)
                     print(f"Antwort von Worker {address}:{port} erhalten: OK")
-                    print(f"Round-Trip-Time: {rtt:.2f} ms\n")
+                    print(f"Round-Trip-Time: {rtt} ms\n")
+
+                    # Ping an den Worker senden und RTT zurückgeben
+                    os.system(f"ping -c 1 {address}")
+
+
                 else:
                     print(f"Unerwartete Antwort von Worker {address}:{port}")
 
@@ -36,7 +42,7 @@ class Controller:
                 print(f"Keine Antwort von Worker {address}:{port} erhalten.\n")
                 self.rtts.append(None)
 
-            time.sleep(self.interval)
+                time.sleep(self.interval)
 
     def get_rtts(self):
         return self.rtts  # Liefert die Round-Trip-Times Liste zurück
@@ -100,3 +106,5 @@ if __name__ == "__main__":
         json.dump(rtt_data_str, file, indent=4)
 
     print("RTTs in rtts.json gespeichert.")
+    while True:
+        running = True
