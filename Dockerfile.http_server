@@ -11,7 +11,7 @@ COPY http_server.py .
 EXPOSE 80
 
 # Define environment variable
-ENV NAME http_server
+ENV NAME=http_server
 
 # Run app.py when the container launches
 CMD ["python", "http_server.py"]

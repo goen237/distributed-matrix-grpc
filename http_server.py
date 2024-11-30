@@ -1,6 +1,14 @@
 import socket
 import json
 import threading
+import logging
+
+# Logging-Konfiguration
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 class HTTP_Server:
     def __init__(self):
@@ -10,7 +18,7 @@ class HTTP_Server:
     def add(self, data):
         with self.lock:
             self.db.append(data)
-            print(f"new row Add: {data}")
+            logger.info(f"Neue Zeile hinzugefügt: {data}")
 
     def get_all(self):
         with self.lock:
@@ -20,17 +28,17 @@ def handle_client(client_socket, db):
     try:
         # Empfang der Anfrage
         request = client_socket.recv(1024).decode('utf-8')
-        print(f"Request:\n{request}")  # Debugging line to see the raw request
+        logger.info(f"Anfrage erhalten:\n{request}")  # Debugging line to see the raw request
 
         # HTTP-Header analysieren
         headers = request.split('\r\n')
-        print(f"Headers:\n{headers}")  # Debugging line to check headers
+        logger.debug(f"Headers:\n{headers}")  # Debugging line to check headers
 
         # Check if the request line has three parts
         try:
             method, path, _ = headers[0].split(' ')
         except ValueError:
-            print(f"Invalid request line: {headers[0]}")
+            logger.warning(f"Ungültige Anfragezeile: {headers[0]}")
             return  # Handle error or send 400 Bad Request response
 
         if method == "GET" and path == "/":
@@ -44,7 +52,7 @@ def handle_client(client_socket, db):
                 f"{response_body}"
             )
             client_socket.sendall(response.encode('utf-8'))
-
+            logger.info("GET-Anfrage erfolgreich bearbeitet.")
 
         elif method == "POST" and path == "/":
             # POST-Anfrage bearbeiten
@@ -75,6 +83,7 @@ def handle_client(client_socket, db):
                     "\r\n"
                     f"{response_body}"
                 )
+                logger.info("POST-Anfrage erfolgreich bearbeitet.")
             except json.JSONDecodeError:
                 response_body = json.dumps({"error": "Invalid JSON"})
                 response = (
@@ -84,6 +93,7 @@ def handle_client(client_socket, db):
                     "\r\n"
                     f"{response_body}"
                 )
+                logger.warning("Ungültiges JSON in der Anfrage.")
             client_socket.sendall(response.encode('utf-8'))
 
         else:
@@ -97,10 +107,13 @@ def handle_client(client_socket, db):
                 f"{response_body}"
             )
             client_socket.sendall(response.encode('utf-8'))
+            logger.warning(f"Nicht unterstützte Methode: {method}")
+
 
     finally:
         # Verbindung schließen
         client_socket.close()
+        logger.info("Verbindung geschlossen.")
 
 
 def start_server(host, port):
@@ -114,7 +127,7 @@ def start_server(host, port):
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((host, port))
     server_socket.listen(10)
-    print(f"Server started at http://{host}:{port}")
+    logger.info(f"Server gestartet unter http://{host}:{port}")
 
     while True:
         client_socket, addr = server_socket.accept()

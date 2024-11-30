@@ -6,10 +6,14 @@ services:
       dockerfile: Dockerfile.worker
     environment:
       WORKER_PORT: 12345
+    volumes:
+      - H:\HDA_info\Semestre_4\Verteilte Systeme\Praktikum\group_d_2\data\rtt_data.json:/app/data/rtt_data.json
     networks:
       - app-network
     deploy:
       replicas: ${WORKER_COUNT}
+      endpoint_mode: dnsrr # erlaubt es, dass der Controller die Worker direkt ansprechen kann
+    entrypoint:  ["python", "worker.py"]
 
   controller:
     build:
@@ -40,3 +44,4 @@ services:
 networks:
   app-network:
     driver: bridge
+
