@@ -33,8 +33,6 @@ class Controller:
 
                     # Ping an den Worker senden und RTT zurückgeben
                     os.system(f"ping -c 1 {address}")
-
-
                 else:
                     print(f"Unerwartete Antwort von Worker {address}:{port}")
 
@@ -86,6 +84,8 @@ if __name__ == "__main__":
     base_name = "group_d_2-worker"  # Name des Workers
     worker_addresses = []
 
+    json_file = "/app/data/rtts.json"
+
     # Erstellen der Worker-Adressen
     for i in range(1, num_workers + 1):
         host = f"{base_name}-{i}"  # Alle Worker nutzen denselben Basisnamen im Netzwerk
@@ -100,10 +100,31 @@ if __name__ == "__main__":
     for worker, rtts in rtt_data.items():
         print(f"RTTs für Worker {worker}: {rtts}")
 
-    # RTTs in eine JSON-Datei schreiben
-    rtt_data_str = {f"{worker[0]}:{worker[1]}": rtts for worker, rtts in rtt_data.items()}
-    with open("rtts.json", "w") as file:
-        json.dump(rtt_data_str, file, indent=4)
+    # Vorhandene Daten aus der JSON-Datei lesen
+    if os.path.exists(json_file):
+        with open(json_file, "r") as f:
+            existing_data = json.load(f)
+    else:
+        existing_data = []
+
+    # Neue Daten hinzufügen
+    new_data = {
+        "Workers": num_workers,
+        "RTTs": []
+    }
+
+    for worker, rtts in rtt_data.items():
+        key = f"{worker[0]} : {worker[1]}"
+        new_data["RTTs"].append({
+            "Worker": key,
+            "RTT": rtts
+        })
+
+    existing_data.append(new_data)
+
+    # Kombinierte Daten in die JSON-Datei schreiben
+    with open(json_file, "w") as f:
+        json.dump(existing_data, f, indent=4)
 
     print("RTTs in rtts.json gespeichert.")
     while True:

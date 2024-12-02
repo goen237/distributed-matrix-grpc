@@ -4,9 +4,10 @@ REPLICAS ?= 3
 .PHONY: up scale down run-Controller
 
 # Build des images Docker
-up:
-	@echo "Starte Docker-Compose mit ${REPLICAS} Worker-Replikaten..."
+start:
+	@echo "Démarrage de Docker-Compose avec ${REPLICAS} Worker-Replikaten..."
 	@set "WORKER_COUNT=${REPLICAS}" && docker-compose build
+up:
 	@set "WORKER_COUNT=${REPLICAS}" && docker-compose up -d --scale worker=${REPLICAS}
 
 down:

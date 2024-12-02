@@ -5,6 +5,7 @@ import time
 import logging
 import json
 
+# Konfiguration des Loggings, damit die Ausgaben in der Konsole erscheinen
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s"
@@ -55,12 +56,10 @@ class HTTP_TCP_Worker(Worker):
         self.server_host = 'http_server'
         self.server_port = port
         self.json_file = "/app/data/rtt_data.json"
+        self.rtt_data = []
         #self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         #self.sock.bind(('0.0.0.0', self.port))
         #self.sock.listen(1)
-
-    def get_worker_ip(self):
-        return socket.gethostbyname(socket.gethostname())
 
     def read_json_file(self, rtt_data: dict):
         # RTT in einei Json-Datei speichern
@@ -94,14 +93,13 @@ class HTTP_TCP_Worker(Worker):
                     logging.info(f"Antwort erhalten: {response}")
                     #print("Antwort erhalten:", response)
                     rtt = round((end_time - start_time) * 1000, 2)
-                    rtt = {
-                        "Worker": socket.gethostname(),
-                        "RTT": rtt
-                    }
-                    self.read_json_file(rtt)
                     logging.info(f"RTT: {rtt} ms")
-
-
+                    self.rtt_data.append(rtt)
+                    # rtt = {
+                    #     "Worker": os.getenv("CONTAINER_NAME", "unknown"),
+                    #     "RTT": rtt
+                    # }
+                    # self.read_json_file(rtt)
                     return response  # Erfolgreiche Antwort zurückgeben
 
             except socket.timeout:
@@ -141,6 +139,13 @@ if __name__ == '__main__':
     # Test GET-Anfragen
     logging.info(f"GET Anfrage: {client.send_get()}")
     #print("GET Anfrage: ", client.send_get())
+
+    # Test JSON-Datei schreiben
+    rtt = {
+        "Worker": os.getenv("CONTAINER_NAME", "unknown"),
+        "RTT": client.rtt_data
+    }
+    client.read_json_file(rtt)
 
     port = int(os.getenv("WORKER_PORT", 12345))
     worker = UDPWorker(port)

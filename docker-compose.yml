@@ -5,7 +5,8 @@ services:
       context: .
       dockerfile: Dockerfile.worker
     environment:
-      WORKER_PORT: 12345
+      - WORKER_PORT=12345
+      - CONTAINER_NAME=${HOSTNAME}
     volumes:
       - H:\HDA_info\Semestre_4\Verteilte Systeme\Praktikum\group_d_2\data\rtt_data.json:/app/data/rtt_data.json
     networks:
@@ -22,6 +23,8 @@ services:
     container_name: controller
     depends_on:
       - worker
+    volumes:
+      - H:\HDA_info\Semestre_4\Verteilte Systeme\Praktikum\group_d_2\rtts.json:/app/data/rtts.json
     networks:
       - app-network
     environment:
