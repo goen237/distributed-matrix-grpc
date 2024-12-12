@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package matrix;
+
+service MatrixService {
+    rpc CalculateMatrix (MatrixRequest) returns (MatrixResponse);
+    rpc StoreMatrix (StoreRequest) returns (StoreMatrixResponse);
+}
+
+message MatrixRequest {
+    int32 worker_id = 1;
+    repeated int32 matrix_a = 2;
+    repeated int32 matrix_b = 3;
+    int32 row = 4;
+    int32 col = 5;
+}
+
+message MatrixResponse {
+    int32 result = 1;
+    int32 row = 2;
+    int32 col = 3;
+}
+
+message StoreRequest {
+    int32 worker_id = 1;
+    int32 result = 2;
+    int32 row = 3;
+    int32 col = 4;
+}
+
+message StoreMatrixResponse {
+    string message = 1;
+}

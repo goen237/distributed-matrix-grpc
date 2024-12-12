@@ -6,11 +6,12 @@ services:
       dockerfile: Dockerfile.worker
     environment:
       - WORKER_PORT=12345
-      - CONTAINER_NAME=${HOSTNAME}
+      - CONTAINER_NAME=${HOSTNAME:-default_hostname}
     volumes:
       - H:\HDA_info\Semestre_4\Verteilte Systeme\Praktikum\group_d_2\data\rtt_data.json:/app/data/rtt_data.json
     networks:
       - app-network
+      - grpc-network
     deploy:
       replicas: ${WORKER_COUNT}
       endpoint_mode: dnsrr # erlaubt es, dass der Controller die Worker direkt ansprechen kann
@@ -27,6 +28,7 @@ services:
       - H:\HDA_info\Semestre_4\Verteilte Systeme\Praktikum\group_d_2\rtts.json:/app/data/rtts.json
     networks:
       - app-network
+      - grpc-network
     environment:
       - WORKER_COUNT=${WORKER_COUNT}
     entrypoint:  ["python", "controller.py"]
@@ -39,6 +41,7 @@ services:
     networks:
       - app-network
     ports:
+    # Port 8080 des Hosts wird auf Port 80 des Containers gemappt
       - "8080:80"
     environment:
       - WORKER_COUNT=${WORKER_COUNT}
@@ -46,5 +49,7 @@ services:
 
 networks:
   app-network:
+    driver: bridge
+  grpc-network:
     driver: bridge
 

@@ -2,6 +2,7 @@ import socket
 import json
 import threading
 import logging
+import math
 
 # Logging-Konfiguration
 logging.basicConfig(
@@ -13,6 +14,7 @@ logger = logging.getLogger(__name__)
 class HTTP_Server:
     def __init__(self):
         self.db = []
+        self.data_array = []
         self.lock = threading.Lock()
 
     def add(self, data):
@@ -23,6 +25,39 @@ class HTTP_Server:
     def get_all(self):
         with self.lock:
             return list(self.db)
+
+    def form_matrix_and_store(self):
+        # Prüfen, ob die Anzahl der Elemente ein perfektes Quadrat ist
+        if math.sqrt(len(self.data_array)).is_integer() and len(self.data_array) >=4 :
+            # Maximale Dimensionen der Matrix finden
+            max_row = max(pos[0] for _, pos in self.data_array) + 1
+            max_col = max(pos[1] for _, pos in self.data_array) + 1
+
+            # Initialisiere eine leere Matrix mit Nullen
+            matrix = [[0 for _ in range(max_col)] for _ in range(max_row)]
+
+            # Platziere jedes Element an der angegebenen Position
+            for element, (row, col) in self.data_array:
+                matrix[row][col] = element
+
+            matrix  = ['['+', '.join(matrix[i])+']' for i in range(len(matrix))]
+            return matrix
+        else:
+            logger.warning("Die Anzahl der Elemente ist kein perfektes Quadrat. Matrix kann nicht gebildet werden.")
+            return None
+
+'''# Exemple d'utilisation
+elements = [
+    (2, (0, 0)),  # 2 à la position (0, 0)
+    (3, (0, 1)),  # 3 à la position (0, 1)
+    (4, (1, 0)),  # 4 à la position (1, 0)
+    (5, (1, 1))   # 5 à la position (1, 1)
+]
+
+matrice = creer_matrice(elements)
+for ligne in matrice:
+    print(ligne)'''
+
 
 def handle_client(client_socket, db):
     try:
@@ -44,6 +79,9 @@ def handle_client(client_socket, db):
         if method == "GET" and path == "/":
             # GET-Anfrage bearbeiten
             response_body = json.dumps({"data": db.get_all()})
+            #response_body = response_body.replace("],", "],\n")
+            response_body = response_body.replace('[\n            ', '[').replace('\n        ]', ']').replace(',\n            ', ', ')
+
             response = (
                 "HTTP/1.1 200 OK\r\n"
                 "Content-Type: application/json\r\n"
@@ -55,6 +93,25 @@ def handle_client(client_socket, db):
             logger.info("GET-Anfrage erfolgreich bearbeitet.")
 
         elif method == "POST" and path == "/":
+            # Überprüfen, ob Content-Type application/json ist
+            '''content_type = None
+            for header in headers:
+                if header.lower().startswith("content-type"):
+                    content_type = header.split(":")[1].strip()
+                    break
+
+            if content_type != " application/json":
+                response_body = json.dumps({"error": "Content-Type must be application/json"})
+                response = (
+                    "HTTP/1.1 400 Bad Request\r\n"
+                    "Content-Type: application/json\r\n"
+                    f"Content-Length: {len(response_body)}\r\n"
+                    "\r\n"
+                    f"{response_body}"
+                )
+                client_socket.sendall(response.encode('utf-8'))
+                logger.warning("Content-Type ist nicht application/json.")
+                return'''
             # POST-Anfrage bearbeiten
             # Extrahiere den Body der Anfrage
             content_length = 0
@@ -74,7 +131,13 @@ def handle_client(client_socket, db):
             try:
                 # Füge die Daten in die DB ein
                 data = json.loads(body)
-                db.add(data)
+                key, value = list(data.items())[0]
+                row, col = key.split('/')
+                row, col = int(row), int(col)
+                db.data_array.append((value, (row, col)))
+                matrix_ = db.form_matrix_and_store()
+                if matrix_ is not None:
+                    db.add(matrix_)
                 response_body = json.dumps({"message": "Data added successfully"})
                 response = (
                     "HTTP/1.1 200 OK\r\n"
@@ -120,9 +183,9 @@ def start_server(host, port):
 
     db = HTTP_Server()
     db.add({
-    "matrix_a": [5,48,84,84,8754,45],
-    "matrix_b": [78,18,65,41,486,65],
-    "result": [745,45,548,4,48,848]
+    "erste_": [5, 48, 33],
+    "matrix_": [78, 18, 65],
+    "matrix_": [33, 45]
     })
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((host, port))
@@ -139,4 +202,5 @@ def start_server(host, port):
 
 
 if __name__ == "__main__":
+    # mit 0.0.0.0 werden Anfragen von allen Netzwerkschnittstellen akzeptiert
     start_server("0.0.0.0", 80)
