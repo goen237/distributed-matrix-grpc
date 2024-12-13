@@ -162,7 +162,7 @@ if __name__ == '__main__':
     _client = HTTP_TCP_Worker()
 
     # Test GET-Anfragen
-    logging.info(f"GET Anfrage: {_client.send_get()}")
+    # logging.info(f"GET Anfrage: {_client.send_get()}")
 
     # Test JSON-Datei schreiben
     rtt = {

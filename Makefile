@@ -7,6 +7,8 @@ workers ?= 3
 start:
 	@echo "Démarrage de Docker-Compose avec ${workers} Worker-Replikaten..."
 	@set "WORKER_COUNT=${workers}" && docker-compose build
+
+up:
 	@set "WORKER_COUNT=${workers}" && docker-compose up -d --scale worker=${workers}
 
 down:

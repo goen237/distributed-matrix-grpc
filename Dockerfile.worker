@@ -3,18 +3,13 @@ FROM python:3-slim
 
 WORKDIR /app
 
-# Copy the Worker script
-COPY worker.py .
-COPY matrix.proto /app
-
 # Set default port via environment variable
 ENV WORKER_PORT=12345
 
 RUN pip install grpcio grpcio-tools
 
-RUN pip install grpcio grpcio-tools
-
 # Proto datei generieren
+COPY matrix.proto /app
 RUN python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. matrix.proto
 
 # Run the Worker

@@ -8,7 +8,9 @@ services:
       - WORKER_PORT=12345
       - CONTAINER_NAME=${HOSTNAME:-default_hostname}
     volumes:
-      - H:\HDA_info\Semestre_4\Verteilte Systeme\Praktikum\group_d_2\data\rtt_data.json:/app/data/rtt_data.json
+      - ./data/rtt_data.json:/app/data/rtt_data.json
+      - ./worker.py:/app/worker.py
+      - ./matrix.proto:/app/matrix.proto
     networks:
       - app-network
       - grpc-network
@@ -25,7 +27,9 @@ services:
     depends_on:
       - worker
     volumes:
-      - H:\HDA_info\Semestre_4\Verteilte Systeme\Praktikum\group_d_2\rtts.json:/app/data/rtts.json
+      - ./rtts.json:/app/data/rtts.json
+      - ./controller.py:/app/controller.py
+      - ./matrix.proto:/app/matrix.proto
     networks:
       - app-network
       - grpc-network
@@ -43,6 +47,8 @@ services:
     ports:
     # Port 8080 des Hosts wird auf Port 80 des Containers gemappt
       - "8080:80"
+    volumes:
+      - ./http_server.py:/usr/src/app/http_server.py
     environment:
       - WORKER_COUNT=${WORKER_COUNT}
     entrypoint:  ["python", "http_server.py"]

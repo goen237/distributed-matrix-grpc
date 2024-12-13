@@ -7,6 +7,7 @@ import grpc
 import logging
 import matrix_pb2
 import matrix_pb2_grpc
+import random
 
 # Logging-Konfiguration
 logging.basicConfig(
@@ -76,6 +77,7 @@ class Controller:
 class HealthCheckManager:
     def __init__(self, worker_addresses: list):
         self.worker_addresses = worker_addresses
+        self.worker_choice = worker_addresses[:]
         self.threads = []
         self.results_rtts = {}  # Dictionary für die Round-Trip-Times
         self.controllers = []  # Liste aller Controller-Instanzen
@@ -105,9 +107,12 @@ class HealthCheckManager:
         return self.results_rtts
 
 
+
     def calculate_and_store(self, matrix_a, matrix_b, row, col):
         """Berechnet Matrizen und speichert die Ergebnisse."""
-        for worker_id, worker_address in enumerate(self.worker_addresses):
+        for worker_id, worker_address in enumerate(self.worker_choice):
+            worker_id = random.randint(0, len(self.worker_choice) - 1)
+            worker_address = self.worker_choice[worker_id]
             logger.info(f"Calculating and storing matrix at position ({row}, {col}) with Worker -> {worker_id, worker_address}...")
             try:
                 controller = Controller(worker_address)
@@ -115,6 +120,7 @@ class HealthCheckManager:
                 logger.info(f"Worker {worker_address[0]} calculation result: {result} at position ({row}, {col})")
                 message = controller.store_result(worker_id, result, row, col)
                 logger.info(f"Worker {worker_address[0]} store message: {message}")
+                self.worker_choice.remove(worker_address)
                 return
             except grpc.RpcError as e:
                 logger.error(f"Worker {worker_address[0]} failed: {e}")

@@ -14,13 +14,22 @@ logger = logging.getLogger(__name__)
 class HTTP_Server:
     def __init__(self):
         self.db = []
+        self.buffer = None
         self.data_array = []
         self.lock = threading.Lock()
 
     def add(self, data):
         with self.lock:
-            self.db.append(data)
+            if self.buffer is None:
+                self.db.append(data)
+            else:
+                if self.db :
+                    self.db[-1] = data
+                else:
+                    self.db.append(data)
+                self.buffer = None
             logger.info(f"Neue Zeile hinzugefügt: {data}")
+
 
     def get_all(self):
         with self.lock:
@@ -28,7 +37,11 @@ class HTTP_Server:
 
     def form_matrix_and_store(self):
         # Prüfen, ob die Anzahl der Elemente ein perfektes Quadrat ist
-        if math.sqrt(len(self.data_array)).is_integer() and len(self.data_array) >=4 :
+        if not math.sqrt(len(self.data_array)).is_integer() or len(self.data_array) < 4:
+            logger.warning(f"Die Anzahl der Elemente -> {len(self.data_array)} <- ist kein perfektes Quadrat. Matrix kann nicht gebildet werden.")
+            return None
+
+        else:
             # Maximale Dimensionen der Matrix finden
             max_row = max(pos[0] for _, pos in self.data_array) + 1
             max_col = max(pos[1] for _, pos in self.data_array) + 1
@@ -40,21 +53,21 @@ class HTTP_Server:
             for element, (row, col) in self.data_array:
                 matrix[row][col] = element
 
-            matrix  = ['['+', '.join(matrix[i])+']' for i in range(len(matrix))]
+            matrix  = ['['+', '.join(map(str, matrix[i]))+']' for i in range(len(matrix))]
+            self.buffer = matrix
             return matrix
-        else:
-            logger.warning("Die Anzahl der Elemente ist kein perfektes Quadrat. Matrix kann nicht gebildet werden.")
-            return None
 
 '''# Exemple d'utilisation
 elements = [
     (2, (0, 0)),  # 2 à la position (0, 0)
     (3, (0, 1)),  # 3 à la position (0, 1)
-    (4, (1, 0)),  # 4 à la position (1, 0)
-    (5, (1, 1))   # 5 à la position (1, 1)
+    (4, (1, 0)),  # 4 à la position (0, 2)
+    (5, (1, 1)),   # 5 à la position (1, 0)
+    (6, (1, 0)),  # 4 à la position (1, 1)
+    (7, (1, 1))   # 5 à la position (1, 2)
 ]
 
-matrice = creer_matrice(elements)
+matrice = form_matrix_and_store(elements)
 for ligne in matrice:
     print(ligne)'''
 
@@ -78,9 +91,7 @@ def handle_client(client_socket, db):
 
         if method == "GET" and path == "/":
             # GET-Anfrage bearbeiten
-            response_body = json.dumps({"data": db.get_all()})
-            #response_body = response_body.replace("],", "],\n")
-            response_body = response_body.replace('[\n            ', '[').replace('\n        ]', ']').replace(',\n            ', ', ')
+            response_body = json.dumps({"Matrix_Resultaten": db.get_all()})
 
             response = (
                 "HTTP/1.1 200 OK\r\n"
@@ -94,13 +105,13 @@ def handle_client(client_socket, db):
 
         elif method == "POST" and path == "/":
             # Überprüfen, ob Content-Type application/json ist
-            '''content_type = None
+            content_type = None
             for header in headers:
                 if header.lower().startswith("content-type"):
                     content_type = header.split(":")[1].strip()
                     break
 
-            if content_type != " application/json":
+            if content_type != "application/json":
                 response_body = json.dumps({"error": "Content-Type must be application/json"})
                 response = (
                     "HTTP/1.1 400 Bad Request\r\n"
@@ -111,7 +122,7 @@ def handle_client(client_socket, db):
                 )
                 client_socket.sendall(response.encode('utf-8'))
                 logger.warning("Content-Type ist nicht application/json.")
-                return'''
+                return
             # POST-Anfrage bearbeiten
             # Extrahiere den Body der Anfrage
             content_length = 0
@@ -125,7 +136,7 @@ def handle_client(client_socket, db):
                     content_length = int(zweites_element)
 
             body = request.split("\r\n\r\n")[1]  # Body nach den Headers
-            if len(body) < content_length:
+            while len(body) < content_length:
                 body += client_socket.recv(content_length - len(body)).decode('utf-8')
 
             try:
@@ -135,9 +146,10 @@ def handle_client(client_socket, db):
                 row, col = key.split('/')
                 row, col = int(row), int(col)
                 db.data_array.append((value, (row, col)))
-                matrix_ = db.form_matrix_and_store()
-                if matrix_ is not None:
-                    db.add(matrix_)
+
+                data = db.form_matrix_and_store()
+                if data is not None:
+                    db.add(data)
                 response_body = json.dumps({"message": "Data added successfully"})
                 response = (
                     "HTTP/1.1 200 OK\r\n"
@@ -147,8 +159,8 @@ def handle_client(client_socket, db):
                     f"{response_body}"
                 )
                 logger.info("POST-Anfrage erfolgreich bearbeitet.")
-            except json.JSONDecodeError:
-                response_body = json.dumps({"error": "Invalid JSON"})
+            except json.JSONDecodeError as e:
+                response_body = json.dumps({"error": "Invalid JSON", "details": str(e)})
                 response = (
                     "HTTP/1.1 400 Bad Request\r\n"
                     "Content-Type: application/json\r\n"
@@ -156,8 +168,9 @@ def handle_client(client_socket, db):
                     "\r\n"
                     f"{response_body}"
                 )
-                logger.warning("Ungültiges JSON in der Anfrage.")
-            client_socket.sendall(response.encode('utf-8'))
+                client_socket.sendall(response.encode('utf-8'))
+                logger.warning(f"Ungültiges JSON in der Anfrage. Fehler: {e}")
+
 
         else:
             # Nicht unterstützte Methode
@@ -182,22 +195,36 @@ def handle_client(client_socket, db):
 def start_server(host, port):
 
     db = HTTP_Server()
-    db.add({
-    "erste_": [5, 48, 33],
-    "matrix_": [78, 18, 65],
-    "matrix_": [33, 45]
-    })
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind((host, port))
-    server_socket.listen(10)
-    logger.info(f"Server gestartet unter http://{host}:{port}")
+    db.add([
+    "[5, 48, 33]",
+    "[78, 18, 65]",
+    "[33, 45, 18]"
+    ])
+    try:
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_socket.bind((host, port))
+        server_socket.listen(10)
+        logger.info(f"Server gestartet unter http://{host}:{port}")
+    except Exception as e:
+        logger.error(f"Fehler beim Starten des Servers: {e}")
+        return
+
+    MAX_CLIENTS = 10
+    current_clients = 0
 
     while True:
+        if current_clients >= MAX_CLIENTS:
+            logger.warning("Maximale Anzahl an Clients erreicht.")
+            continue
+
         client_socket, addr = server_socket.accept()
-        print(f"Connection from {addr}")
+        current_clients += 1
+        logger.info(f"Verbindung von {addr} hergestellt.")
 
         client_thread = threading.Thread(target=handle_client, args=(client_socket, db))
         client_thread.start()
+
+
 
 
 
