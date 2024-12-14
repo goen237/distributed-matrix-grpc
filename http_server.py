@@ -213,9 +213,9 @@ def start_server(host, port):
     current_clients = 0
 
     while True:
-        if current_clients >= MAX_CLIENTS:
-            logger.warning("Maximale Anzahl an Clients erreicht.")
-            continue
+        # if current_clients >= MAX_CLIENTS:
+        #     logger.warning("Maximale Anzahl an Clients erreicht.")
+        #     continue
 
         client_socket, addr = server_socket.accept()
         current_clients += 1

@@ -1606,5 +1606,9 @@
     {
         "Worker": "default_hostname",
         "RTT": []
+    },
+    {
+        "Worker": "default_hostname",
+        "RTT": []
     }
 ]
