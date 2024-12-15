@@ -27,7 +27,7 @@ class Worker:
         self.json_file = "/app/data/rtt_data.json"
         self.rtt_data = []
 
-    def start(self):
+    def  start(self):
         udp_thread = threading.Thread(target=self._start_udp, daemon=True)
         udp_thread.start()
         logger.info("UDP-Listener gestartet.")

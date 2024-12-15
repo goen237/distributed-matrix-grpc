@@ -2,11 +2,15 @@ syntax = "proto3";
 
 package matrix;
 
+// Service definition
 service MatrixService {
+    // Calculate matrix multiplication of two matrices A and B
     rpc CalculateMatrix (MatrixRequest) returns (MatrixResponse);
+    // Store the result of matrix multiplication
     rpc StoreMatrix (StoreRequest) returns (StoreMatrixResponse);
 }
 
+// client -> server
 message MatrixRequest {
     repeated int32 matrix_a = 1;
     repeated int32 matrix_b = 2;
@@ -14,18 +18,21 @@ message MatrixRequest {
     int32 col = 4;
 }
 
+// server -> client
 message MatrixResponse {
     int32 result = 1;
     int32 row = 2;
     int32 col = 3;
 }
 
+// client -> server
 message StoreRequest {
     int32 result = 1;
     int32 row = 2;
     int32 col = 3;
 }
 
+// server -> client
 message StoreMatrixResponse {
     string message = 1;
 }

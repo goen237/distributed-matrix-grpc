@@ -4,61 +4,61 @@
         {
             "Worker": "group_d_2-worker-1:12345",
             "RTT": [
-                91.06
+                502.24
             ]
         },
         {
             "Worker": "group_d_2-worker-2:12345",
             "RTT": [
-                162.62
+                109.16
             ]
         },
         {
             "Worker": "group_d_2-worker-3:12345",
             "RTT": [
-                124.1
+                326.2
             ]
         },
         {
             "Worker": "group_d_2-worker-4:12345",
             "RTT": [
-                94.72
+                886.13
             ]
         },
         {
             "Worker": "group_d_2-worker-5:12345",
             "RTT": [
-                154.49
+                385.75
             ]
         },
         {
             "Worker": "group_d_2-worker-6:12345",
             "RTT": [
-                120.78
+                253.21
             ]
         },
         {
             "Worker": "group_d_2-worker-7:12345",
             "RTT": [
-                212.38
+                262.33
             ]
         },
         {
             "Worker": "group_d_2-worker-8:12345",
             "RTT": [
-                118.64
+                457.05
             ]
         },
         {
             "Worker": "group_d_2-worker-9:12345",
             "RTT": [
-                151.67
+                396.19
             ]
         },
         {
             "Worker": "group_d_2-worker-10:12345",
             "RTT": [
-                104.78
+                49.48
             ]
         }
     ]

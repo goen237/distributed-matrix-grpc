@@ -11,23 +11,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-class HTTP_Server:
+class Database:
     def __init__(self):
         self.db = []
-        self.buffer = None
+        self.current_matrix = None
         self.data_array = []
         self.lock = threading.Lock()
 
     def add(self, data):
         with self.lock:
-            if self.buffer is None:
-                self.db.append(data)
-            else:
-                if self.db :
-                    self.db[-1] = data
-                else:
-                    self.db.append(data)
-                self.buffer = None
+            self.db.append(data)
             logger.info(f"Neue Zeile hinzugefügt: {data}")
 
 
@@ -54,25 +47,14 @@ class HTTP_Server:
                 matrix[row][col] = element
 
             matrix  = ['['+', '.join(map(str, matrix[i]))+']' for i in range(len(matrix))]
-            self.buffer = matrix
+            self.current_matrix = matrix
             return matrix
 
-'''# Exemple d'utilisation
-elements = [
-    (2, (0, 0)),  # 2 à la position (0, 0)
-    (3, (0, 1)),  # 3 à la position (0, 1)
-    (4, (1, 0)),  # 4 à la position (0, 2)
-    (5, (1, 1)),   # 5 à la position (1, 0)
-    (6, (1, 0)),  # 4 à la position (1, 1)
-    (7, (1, 1))   # 5 à la position (1, 2)
-]
-
-matrice = form_matrix_and_store(elements)
-for ligne in matrice:
-    print(ligne)'''
+    def get_current_matrix(self):
+        return self.current_matrix
 
 
-def handle_client(client_socket, db):
+def handle_client(client_socket, db : Database):
     try:
         # Empfang der Anfrage
         request = client_socket.recv(1024).decode('utf-8')
@@ -91,7 +73,12 @@ def handle_client(client_socket, db):
 
         if method == "GET" and path == "/":
             # GET-Anfrage bearbeiten
-            response_body = json.dumps({"Matrix_Resultaten": db.get_all()})
+            data = db.get_current_matrix()
+            if data is not None:
+                db.add(data)
+                response_body = json.dumps({"Matrix_Resultaten": db.get_all()})
+            else:
+                response_body = json.dumps({"Message":"Matrix immer noch unvollständig ."})
 
             response = (
                 "HTTP/1.1 200 OK\r\n"
@@ -146,10 +133,7 @@ def handle_client(client_socket, db):
                 row, col = key.split('/')
                 row, col = int(row), int(col)
                 db.data_array.append((value, (row, col)))
-
-                data = db.form_matrix_and_store()
-                if data is not None:
-                    db.add(data)
+                db.form_matrix_and_store()
                 response_body = json.dumps({"message": "Data added successfully"})
                 response = (
                     "HTTP/1.1 200 OK\r\n"
@@ -194,7 +178,7 @@ def handle_client(client_socket, db):
 
 def start_server(host, port):
 
-    db = HTTP_Server()
+    db = Database()
     db.add([
     "[5, 48, 33]",
     "[78, 18, 65]",
@@ -213,19 +197,12 @@ def start_server(host, port):
     current_clients = 0
 
     while True:
-        # if current_clients >= MAX_CLIENTS:
-        #     logger.warning("Maximale Anzahl an Clients erreicht.")
-        #     continue
-
         client_socket, addr = server_socket.accept()
         current_clients += 1
         logger.info(f"Verbindung von {addr} hergestellt.")
 
         client_thread = threading.Thread(target=handle_client, args=(client_socket, db))
         client_thread.start()
-
-
-
 
 
 if __name__ == "__main__":

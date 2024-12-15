@@ -119,25 +119,6 @@ class Controller:
         with ThreadPoolExecutor(max_workers=len(self.worker_addresses)) as executor:
             executor.map(assign_task, task_queue)
 
-
-    '''def calculate_and_store(self, matrix_a, matrix_b, row, col):
-        """Berechnet Matrizen und speichert die Ergebnisse."""
-        for worker_id, worker_address in enumerate(self.worker_choice):
-            worker_id = random.randint(0, len(self.worker_choice) - 1)
-            worker_address = self.worker_choice[worker_id]
-            logger.info(f"Calculating and storing matrix at position ({row}, {col}) with Worker -> {worker_id, worker_address}...")
-            try:
-                controller = Controller(worker_address)
-                result = controller.calculate_matrix(worker_id, matrix_a, matrix_b, row, col)
-                logger.info(f"Worker {worker_address[0]} calculation result: {result} at position ({row}, {col})")
-                message = controller.store_result(worker_id, result, row, col)
-                logger.info(f"Worker {worker_address[0]} store message: {message}")
-                self.worker_choice.remove(worker_address)
-                return
-            except grpc.RpcError as e:
-                logger.error(f"Worker {worker_address[0]} failed: {e}")
-        logger.error("All workers failed to calculate and store the matrix.")
-'''
     def save_rtt_data(self, json_file):
             """Speichert die RTT-Daten in einer JSON-Datei."""
             rtt_data = {
@@ -185,22 +166,6 @@ if __name__ == "__main__":
     controller.distribute_tasks(matrix_a, matrix_b)
 
     controller.close_socket()
-
-
-    # Matrixberechnung und Speicherung
-    '''if column_ma != line_mb:
-        logger.error("The number of columns of the first matrix must be equal to the number of lines of the second matrix.")
-    else:
-        for i in range(line_ma):
-            line = matrix_a[i]
-            c = -1
-            for j in range (column_mb):
-                column =[]
-                for k in range(line_mb):
-                    column.append(matrix_b[k][j])
-                c += 1
-                manager.calculate_and_store(line, column, i, c)'''
-
 
     while True:
         running = True
