@@ -7,6 +7,8 @@ WORKDIR /app
 ENV WORKER_PORT=12345
 
 RUN pip install grpcio grpcio-tools
+RUN pip install paho-mqtt
+
 
 # Proto datei generieren
 COPY matrix.proto /app

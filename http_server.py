@@ -16,17 +16,17 @@ class Database:
         self.db = []
         self.current_matrix = None
         self.data_array = []
-        self.lock = threading.Lock()
+        #self.lock = threading.Lock()
 
     def add(self, data):
-        with self.lock:
-            self.db.append(data)
-            logger.info(f"Neue Zeile hinzugefügt: {data}")
+        #with self.lock:
+        self.db.append(data)
+        logger.info(f"Neue Zeile hinzugefügt: {data}")
 
 
     def get_all(self):
-        with self.lock:
-            return list(self.db)
+        #with self.lock:
+        return list(self.db)
 
     def form_matrix_and_store(self):
         # Prüfen, ob die Anzahl der Elemente ein perfektes Quadrat ist
@@ -123,8 +123,8 @@ def handle_client(client_socket, db : Database):
                     content_length = int(zweites_element)
 
             body = request.split("\r\n\r\n")[1]  # Body nach den Headers
-            while len(body) < content_length:
-                body += client_socket.recv(content_length - len(body)).decode('utf-8')
+            while len(body.encode('utf-8')) < content_length:
+                body += client_socket.recv(content_length - len(body.encode('utf-8'))).decode('utf-8')
 
             try:
                 # Füge die Daten in die DB ein
@@ -138,7 +138,7 @@ def handle_client(client_socket, db : Database):
                 response = (
                     "HTTP/1.1 200 OK\r\n"
                     "Content-Type: application/json\r\n"
-                    f"Content-Length: {len(response_body)}\r\n"
+                    f"Content-Length: {len(response_body.encode('utf-8'))}\r\n"
                     "\r\n"
                     f"{response_body}"
                 )
@@ -179,11 +179,11 @@ def handle_client(client_socket, db : Database):
 def start_server(host, port):
 
     db = Database()
-    db.add([
+    '''db.add([
     "[5, 48, 33]",
     "[78, 18, 65]",
     "[33, 45, 18]"
-    ])
+    ])'''
     try:
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server_socket.bind((host, port))

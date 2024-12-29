@@ -151,8 +151,6 @@ if __name__ == "__main__":
     matrix_b = [[random.randint(1, 10) for _ in range(3)] for _ in range(3)]
 
 
-
-
     controller = Controller(worker_addresses)
 
     logger.info("Starting healthchecks...")

@@ -34,6 +34,8 @@
 # plt.title('Durchschnittliche RTT-Zeit (ms) je nach Anzahl von Workern')
 # plt.grid(True)
 # plt.show()
+
+
 import os
 import json
 import numpy as np

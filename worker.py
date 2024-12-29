@@ -1,3 +1,5 @@
+import paho.mqtt.client as mqtt
+from queue import PriorityQueue
 import socket
 import os
 import json
@@ -17,7 +19,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class Worker:
-    def __init__(self, udp_port: int, tcp_port: int):
+    def __init__(self, udp_port: int, tcp_port: int, mqtt_host: str, mqtt_port: int):
         self.udp_port = udp_port
         self.tcp_port = tcp_port
         self.running = True
@@ -27,7 +29,31 @@ class Worker:
         self.json_file = "/app/data/rtt_data.json"
         self.rtt_data = []
 
+        # Lamport-Algorithmus
+        self.clock = 0
+        self.queue = PriorityQueue()
+        self.mutex = threading.Lock()
+        # eigene IP-Adresse ermitteln
+        self.ip_address = socket.gethostbyname(socket.gethostname())
+
+        # MQTT-Client
+        self.mqtt_brocker = mqtt_host
+        self.mqtt_port = mqtt_port
+        self.mqtt_client = mqtt.Client(client_id=str(self.ip_address), protocol=mqtt.MQTTv311)
+        self.mqtt_client.on_message = self._on_message
+        try:
+            self.mqtt_client.connect(self.mqtt_brocker, self.mqtt_port, 60)
+            logger.info(f"Erfolgreich verbunden mit MQTT-Broker {self.mqtt_brocker}:{self.mqtt_port}")
+        except Exception as e:
+            logger.error(f"Fehler beim Verbinden mit dem MQTT-Broker: {e}")
+
+        self.mqtt_client.subscribe("worker/request")
+        self.mqtt_client.subscribe("worker/ack")
+        self.mqtt_client.subscribe("worker/release")
+        self.mqtt_client.loop_start()
+
     def  start(self):
+        logger.info(f"IP-Adresse: {self.ip_address}")
         udp_thread = threading.Thread(target=self._start_udp, daemon=True)
         udp_thread.start()
         logger.info("UDP-Listener gestartet.")
@@ -41,6 +67,60 @@ class Worker:
             logger.error(f"Fehler im UDP Worker: {e}")
         finally:
             self.udp_socket.close()
+
+    def _on_message(self, client, userdata, message):
+        topic = message.topic
+        payload = json.loads(message.payload.decode())
+        logger.info(f"Nachricht erhalten auf Topic: {topic} - {payload}")
+
+        if topic == "worker/request":
+            self._handle_request(payload)
+        elif topic == "worker/ack":
+            self._handle_ack(payload)
+        elif topic == "worker/release":
+            self._handle_release(payload)
+
+    def _handle_request(self, request):
+        with self.mutex:
+            self.clock = max(self.clock, request["timestamp"]) + 1
+            self.queue.put((request["timestamp"], request["ip"]))
+            self.mqtt_client.publish("worker/ack", json.dumps({
+                "timestamp": self.clock,
+                "ip": self.ip_address
+            }))
+            logger.info(f"ACK gesendet an {request['ip']}")
+
+    def _handle_ack(self, ack):
+        with self.mutex:
+            self.clock = max(self.clock, ack["timestamp"]) + 1
+            self.queue.put((ack["timestamp"], ack["ip"]))
+
+    def _handle_release(self, release):
+        with self.mutex:
+            self.clock = max(self.clock, release["timestamp"]) + 1
+            while not self.queue.empty() and self.queue.queue[0][1] != self.ip_address:
+                self.queue.get()
+
+    def request_critical_section(self):
+        with self.mutex:
+            self.clock += 1
+            self.queue.put((self.clock, self.ip_address))
+            self.mqtt_client.publish("worker/request", json.dumps({
+                "timestamp": self.clock,
+                "ip": self.ip_address
+            }))
+
+        while self.queue.queue[0][1] != self.ip_address:
+            pass
+
+    def release_critical_section(self):
+        with self.mutex:
+            self.queue.get()
+            self.mqtt_client.publish("worker/release", json.dumps({
+                "timestamp": self.clock,
+                "ip": self.ip_address
+            }))
+
 
     def _handle_udp_request(self, data: bytes, addr: tuple):
         if data.decode() == 'healthcheck':
@@ -76,7 +156,7 @@ class Worker:
     def send_post(self, key, value):
         body = json.dumps({key: value})
         request = (f"POST / HTTP/1.1\r\nHost: {self.server_host}\r\nContent-Type: application/json\r\n"
-                   f"Content-Length: {len(body)}\r\n\r\n{body}")
+                   f"Content-Length: {len(body.encode('utf-8'))}\r\n\r\n{body}")
         return self.send_request(request)
 
     def send_get(self):
@@ -117,7 +197,9 @@ class MatrixServices(matrix_pb2_grpc.MatrixServiceServicer):
 
     def StoreMatrix(self, request, context):
         try:
+            self.Worker.request_critical_section()
             response = self.Worker.send_post(f"{request.row}/{request.col}", str(request.result))
+            self.Worker.release_critical_section()
             return matrix_pb2.StoreMatrixResponse(message="Matrix erfolgreich gespeichert.")
         except Exception as e:
             logger.error(f"Fehler beim Speichern der Matrix: {e}")
@@ -127,6 +209,7 @@ class MatrixServices(matrix_pb2_grpc.MatrixServiceServicer):
 
 
 def serve(_worker: Worker):
+
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     matrix_pb2_grpc.add_MatrixServiceServicer_to_server(MatrixServices(_worker), server)
     _port = int(os.getenv("WORKER_PORT", 12345))
@@ -138,7 +221,7 @@ def serve(_worker: Worker):
 
 if __name__ == '__main__':
 
-    worker = Worker(udp_port=12345, tcp_port=80)
+    worker = Worker(udp_port=12345, tcp_port=80, mqtt_host="mqtt-broker", mqtt_port=1883)
     worker.start()
 
     rtt = {

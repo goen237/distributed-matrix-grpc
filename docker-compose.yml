@@ -1,5 +1,18 @@
 # version: '3.8'
 services:
+  mqtt-broker:
+    image: eclipse-mosquitto
+    container_name: mqtt-broker
+    # restart: always damit der Container immer wieder startet, wenn er beendet wird
+    # restart: always
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+    #   - ./mosquitto/data:/mosquitto/data
+    #   - ./mosquitto/log:/mosquitto/log
+    ports:
+      - "1883:1883"
+    networks:
+      - app-network
   worker:
     build:
       context: .
@@ -7,6 +20,8 @@ services:
     environment:
       - WORKER_PORT=12345
       - CONTAINER_NAME=${HOSTNAME:-default_hostname}
+    depends_on:
+      - mqtt-broker
     volumes:
       - ./data/rtt_data.json:/app/data/rtt_data.json
       - ./worker.py:/app/worker.py
