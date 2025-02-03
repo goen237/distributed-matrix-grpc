@@ -84,8 +84,8 @@ def handle_client(client_socket, db : Database):
 
                     break
             accept_list = [accept_header.split(",")[i].strip() for i in range(len(accept_header.split(",")))]
-            if "application/json" not in accept_list:
-            # if "text/html" not in accept_list:
+            #if "application/json" not in accept_list:
+             if "*/*" not in accept_list or 'text/hml' not in accept_list:
                 #response_body = json.dumps({"error": "Accept header must be application/json"})
                 response_body = json.dumps({"error": f'Accept-Header muss text/html sein. Aktuell: {accept_header}'})
                 response = (
