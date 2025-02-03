@@ -73,16 +73,45 @@ def handle_client(client_socket, db : Database):
 
         if method == "GET" and path == "/":
             # GET-Anfrage bearbeiten
+            # Überprüfen, ob der Accept-Header application/json ist
+            accept_header = None
+            for header in headers:
+                if header.lower().startswith("accept"):
+                    accept_header = header.split(":")[1].strip()
+                    logger.debug("----------------------------------")
+                    logger.debug(f"Accept-Header: {accept_header}")
+                    logger.debug("----------------------------------")
+
+                    break
+            accept_list = [accept_header.split(",")[i].strip() for i in range(len(accept_header.split(",")))]
+            if "application/json" not in accept_list:
+            # if "text/html" not in accept_list:
+                #response_body = json.dumps({"error": "Accept header must be application/json"})
+                response_body = json.dumps({"error": f'Accept-Header muss text/html sein. Aktuell: {accept_header}'})
+                response = (
+                    "HTTP/1.1 406 Not Acceptable\r\n"
+                    "Content-Type: application/json\r\n"
+                    "Content-Length: {}\r\n"
+                    "\r\n"
+                   # "{}".format(len(response_body), response_body)
+                )
+                client_socket.sendall(response.encode('utf-8'))
+                logger.warning("Accept-Header ist nicht application/json.")
+                return
             data = db.get_current_matrix()
             if data is not None:
                 db.add(data)
-                response_body = json.dumps({"Matrix_Resultaten": db.get_all()})
+                response_body = "<html><body><h1>Matrix Resultaten</h1><p>"
+                for matrix in db.get_all():
+                    for row in matrix:
+                        response_body += f"{row}<br>"
+                response_body += "</p></body></html>"
             else:
-                response_body = json.dumps({"Message":"Matrix immer noch unvollständig ."})
+                response_body = "<html><body><h1>Matrix immer noch unvollstaendig.</h1></body></html>"
 
             response = (
                 "HTTP/1.1 200 OK\r\n"
-                "Content-Type: application/json\r\n"
+                "Content-Type: text/html\r\n"
                 f"Content-Length: {len(response_body)}\r\n"
                 "\r\n"
                 f"{response_body}"

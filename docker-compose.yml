@@ -20,6 +20,7 @@ services:
     environment:
       - WORKER_PORT=12345
       - CONTAINER_NAME=${HOSTNAME:-default_hostname}
+      - WORKER_COUNT=${WORKER_COUNT}
     depends_on:
       - mqtt-broker
     volumes:

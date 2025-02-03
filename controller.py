@@ -27,7 +27,6 @@ class Controller:
         self.rtts = {addr: [] for addr in worker_addresses}  # RTT-Daten für jeden Worker
         self.task_assignment_index = 0  # Index für Round-Robin-Aufgabenzuweisung
 
-
     def send_healthcheck(self, worker_address: list):
         address, port = worker_address
         try:
@@ -149,7 +148,6 @@ if __name__ == "__main__":
 
     matrix_a = [[random.randint(1, 10) for _ in range(3)] for _ in range(3)]
     matrix_b = [[random.randint(1, 10) for _ in range(3)] for _ in range(3)]
-
 
     controller = Controller(worker_addresses)
 

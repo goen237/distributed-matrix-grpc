@@ -28,11 +28,13 @@ class Worker:
         self.server_host = 'http_server'
         self.json_file = "/app/data/rtt_data.json"
         self.rtt_data = []
+        self.rtt_data_lock = threading.Lock()  # Lock für thread-sicheren Zugriff auf rtt_data
 
         # Lamport-Algorithmus
         self.clock = 0
         self.queue = PriorityQueue()
         self.mutex = threading.Lock()
+        self.condition = threading.Condition(self.mutex)
         # eigene IP-Adresse ermitteln
         self.ip_address = socket.gethostbyname(socket.gethostname())
 
@@ -52,7 +54,7 @@ class Worker:
         self.mqtt_client.subscribe("worker/release")
         self.mqtt_client.loop_start()
 
-    def  start(self):
+    def start(self):
         logger.info(f"IP-Adresse: {self.ip_address}")
         udp_thread = threading.Thread(target=self._start_udp, daemon=True)
         udp_thread.start()
@@ -94,12 +96,14 @@ class Worker:
         with self.mutex:
             self.clock = max(self.clock, ack["timestamp"]) + 1
             self.queue.put((ack["timestamp"], ack["ip"]))
+            self.condition.notify_all()
 
     def _handle_release(self, release):
         with self.mutex:
             self.clock = max(self.clock, release["timestamp"]) + 1
             while not self.queue.empty() and self.queue.queue[0][1] != self.ip_address:
                 self.queue.get()
+            self.condition.notify_all()
 
     def request_critical_section(self):
         with self.mutex:
@@ -110,8 +114,9 @@ class Worker:
                 "ip": self.ip_address
             }))
 
-        while self.queue.queue[0][1] != self.ip_address:
-            pass
+        with self.mutex:
+            while self.queue.queue[0][1] != self.ip_address:
+                self.condition.wait()
 
     def release_critical_section(self):
         with self.mutex:
@@ -120,7 +125,7 @@ class Worker:
                 "timestamp": self.clock,
                 "ip": self.ip_address
             }))
-
+            self.condition.notify_all()
 
     def _handle_udp_request(self, data: bytes, addr: tuple):
         if data.decode() == 'healthcheck':
@@ -128,7 +133,7 @@ class Worker:
             self.udp_socket.sendto(b'OK', addr)
         elif data.decode() == 'stop':
             logger.info(f"Stop-Anfrage von {addr} erhalten auf Port {self.udp_port}")
-            # self.running = False
+            self.running = False
 
     def send_request(self, request, retries=5, timeout=5):
         last_exception = None
@@ -142,10 +147,15 @@ class Worker:
                     client_socket.send(request.encode())
                     response = client_socket.recv(1024).decode()
                     end_time = time.time()
-                    logger.info(f"Antwort erhalten: {response}")
                     rtt = round((end_time - start_time) * 1000, 2)
-                    logger.info(f"RTT: {rtt} ms")
-                    self.rtt_data.append(rtt)
+                    logger.info(f"Antwort erhalten: {response}, RTT: {rtt} ms")
+                    with self.rtt_data_lock:
+                        self.rtt_data.append(rtt)
+                    logger.info(f"RTT-Daten: {self.rtt_data}")
+                    self.read_json_file({
+                        "Worker_x": self.ip_address,
+                        "RTT_n": self.rtt_data
+                    })
                     return response
             except (socket.timeout, socket.error) as e:
                 logger.warning(f"Fehler beim Versuch {attempt}/{retries}: {e}")
@@ -178,8 +188,10 @@ class Worker:
 
 
 class MatrixServices(matrix_pb2_grpc.MatrixServiceServicer):
-    def __init__(self, Worker):
-        self.Worker = Worker
+    def __init__(self, worker):
+        self.worker = worker
+        self.executor = futures.ThreadPoolExecutor(max_workers=10)  # Thread-Pool für parallele Aufgaben
+
     def CalculateMatrix(self, request, context):
         if len(request.matrix_a) != len(request.matrix_b):
             context.set_details("Die Matrizen haben unterschiedliche Längen")
@@ -187,7 +199,9 @@ class MatrixServices(matrix_pb2_grpc.MatrixServiceServicer):
             return matrix_pb2.MatrixResponse()
 
         try:
-            result = sum(a * b for a, b in zip(request.matrix_a, request.matrix_b))
+            # Matrixmultiplikation in einem separaten Thread ausführen
+            future = self.executor.submit(self._multiply_matrices, request.matrix_a, request.matrix_b)
+            result = future.result()
             return matrix_pb2.MatrixResponse(result=result)
         except Exception as e:
             logger.error(f"Fehler bei der Matrixberechnung: {e}")
@@ -195,11 +209,14 @@ class MatrixServices(matrix_pb2_grpc.MatrixServiceServicer):
             context.set_code(grpc.StatusCode.INTERNAL)
             return matrix_pb2.MatrixResponse()
 
+    def _multiply_matrices(self, matrix_a, matrix_b):
+        return sum(a * b for a, b in zip(matrix_a, matrix_b))
+
     def StoreMatrix(self, request, context):
         try:
-            self.Worker.request_critical_section()
-            response = self.Worker.send_post(f"{request.row}/{request.col}", str(request.result))
-            self.Worker.release_critical_section()
+            # Speicherung der Matrix in einem separaten Thread ausführen
+            future = self.executor.submit(self._store_matrix, request.row, request.col, request.result)
+            future.result()  # Warten, bis die Speicherung abgeschlossen ist
             return matrix_pb2.StoreMatrixResponse(message="Matrix erfolgreich gespeichert.")
         except Exception as e:
             logger.error(f"Fehler beim Speichern der Matrix: {e}")
@@ -207,27 +224,32 @@ class MatrixServices(matrix_pb2_grpc.MatrixServiceServicer):
             context.set_code(grpc.StatusCode.INTERNAL)
             return matrix_pb2.StoreMatrixResponse()
 
+    def _store_matrix(self, row, col, result):
+        # Kritischer Abschnitt: Nur ein Thread darf gleichzeitig speichern
+        self.worker.request_critical_section()
+        try:
+            response = self.worker.send_post(f"{row}/{col}", str(result))
+            logger.info(f"Speicherung erfolgreich: {response}")
+        finally:
+            self.worker.release_critical_section()
 
-def serve(_worker: Worker):
-
+def serve(worker: Worker):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    matrix_pb2_grpc.add_MatrixServiceServicer_to_server(MatrixServices(_worker), server)
+    matrix_pb2_grpc.add_MatrixServiceServicer_to_server(MatrixServices(worker), server)
     _port = int(os.getenv("WORKER_PORT", 12345))
     server.add_insecure_port(f'[::]:{_port}')
     server.start()
     logger.info(f"gRPC-Server gestartet auf Port {_port}.")
-    server.wait_for_termination()
+    try:
+        while worker.running:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        worker.running = False
+    server.stop(0)
+    logger.info("gRPC-Server gestoppt.")
 
 
 if __name__ == '__main__':
-
     worker = Worker(udp_port=12345, tcp_port=80, mqtt_host="mqtt-broker", mqtt_port=1883)
     worker.start()
-
-    rtt = {
-        "Worker": os.getenv("CONTAINER_NAME", "unknown"),
-        "RTT": worker.rtt_data
-    }
-    worker.read_json_file(rtt)
-
     serve(worker)
